@@ -2,6 +2,9 @@
   "name": "@otp-id/sdk",
   "version": "0.1.0",
   "description": "Official OTP.ID SDK for Node.js/TypeScript — multi-channel OTP delivery (WhatsApp, SMS, Email, Missed Call, Voice) with prepaid billing.",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -27,14 +30,18 @@
   },
   "scripts": {
     "build": "tsup",
+    "prepack": "npm run build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "otp",
-    "sms",
     "whatsapp",
+    "sms",
+    "voice",
     "email",
+    "2fa",
+    "indonesia",
     "sdk",
     "otp.id"
   ],

@@ -6,3 +6,12 @@
  */
 
 export const SDK_VERSION = '0.1.0';
+
+export {
+  APIError,
+  ErrorCodes,
+  InvalidSignatureError,
+  StaleTimestampError,
+  UnexpectedEventError,
+} from './errors.js';
+export type { ErrorCode } from './errors.js';

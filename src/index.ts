@@ -17,6 +17,13 @@ export type { ErrorCode } from './errors.js';
 export { OtpIdClient, VERSION } from './client.js';
 export type { OtpIdClientOptions } from './client.js';
 
+export {
+  WEBHOOK_TOLERANCE_SECONDS,
+  parseVerifiedEvent,
+  verifyWebhookSignature,
+} from './webhook.js';
+export type { ParseVerifiedEventOptions } from './webhook.js';
+
 export { Channels } from './types.js';
 export type {
   AccountResult,

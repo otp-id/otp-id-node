@@ -1,0 +1,50 @@
+{
+  "name": "@otp-id/sdk",
+  "version": "0.1.0",
+  "description": "Official OTP.ID SDK for Node.js/TypeScript — multi-channel OTP delivery (WhatsApp, SMS, Email, Missed Call, Voice) with prepaid billing.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "otp",
+    "sms",
+    "whatsapp",
+    "email",
+    "sdk",
+    "otp.id"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otp-id/otp-id-node.git"
+  },
+  "homepage": "https://github.com/otp-id/otp-id-node",
+  "bugs": {
+    "url": "https://github.com/otp-id/otp-id-node/issues"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "typescript": "^5.9.3",
+    "tsup": "^8.5.1",
+    "vitest": "^4.1.10"
+  }
+}

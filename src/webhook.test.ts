@@ -123,6 +123,36 @@ describe('parseVerifiedEvent', () => {
     expect(apiErr.httpStatus).toBe(0);
   });
 
+  it('throws APIError INVALID_RESPONSE (not a raw TypeError) for a validly-signed JSON `null` body', () => {
+    const body = 'null';
+    const sig = sign(SECRET, TIMESTAMP, body);
+    let caught: unknown;
+    try {
+      parseVerifiedEvent(SECRET, TIMESTAMP, sig, body, { _now: () => 1765700000 });
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(APIError);
+    const apiErr = caught as APIError;
+    expect(apiErr.code).toBe(ErrorCodes.INVALID_RESPONSE);
+    expect(apiErr.httpStatus).toBe(0);
+  });
+
+  it('throws APIError INVALID_RESPONSE for a validly-signed JSON array body', () => {
+    const body = '[]';
+    const sig = sign(SECRET, TIMESTAMP, body);
+    let caught: unknown;
+    try {
+      parseVerifiedEvent(SECRET, TIMESTAMP, sig, body, { _now: () => 1765700000 });
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(APIError);
+    const apiErr = caught as APIError;
+    expect(apiErr.code).toBe(ErrorCodes.INVALID_RESPONSE);
+    expect(apiErr.httpStatus).toBe(0);
+  });
+
   it('throws UnexpectedEventError carrying the actual event name for a signed otp.expired payload', () => {
     const body = '{"event":"otp.expired","otp_id":"OTP20260807ABCD000001"}';
     const sig = sign(SECRET, TIMESTAMP, body);

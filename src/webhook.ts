@@ -121,6 +121,14 @@ export function parseVerifiedEvent(
     );
   }
 
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new APIError(
+      ErrorCodes.INVALID_RESPONSE,
+      'webhook payload is not a JSON object',
+      0,
+    );
+  }
+
   const event = parsed as VerifiedEvent;
   if (event.event !== 'otp.verified') {
     throw new UnexpectedEventError(`unexpected webhook event: "${event.event}"`);

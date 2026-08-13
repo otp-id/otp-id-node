@@ -1,4 +1,13 @@
 import { APIError, ErrorCodes } from './errors.js';
+import type {
+  AccountResult,
+  CreateTopupParams,
+  OrderParams,
+  OrderResult,
+  StatusResult,
+  TopupResult,
+  VerifyResult,
+} from './types.js';
 
 /** SDK version, sent in the `User-Agent` header. */
 export const VERSION = '0.1.0';
@@ -44,6 +53,34 @@ function bodySnippet(raw: string): string {
     return chars.slice(0, MAX_SNIPPET_CHARS).join('');
   }
   return trimmed;
+}
+
+/**
+ * Returns a new object with every `undefined`-valued key removed. Used to
+ * build outbound request bodies so empty optional fields (e.g. an unset
+ * `OrderParams.brand`) are absent from the JSON payload rather than present
+ * with a `null`/`undefined` value — mirrors the Go SDK's `json:",omitempty"`.
+ */
+function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  const result: Partial<T> = {};
+  for (const key of Object.keys(obj) as (keyof T)[]) {
+    if (obj[key] !== undefined) {
+      result[key] = obj[key];
+    }
+  }
+  return result;
+}
+
+/**
+ * Trims `otpId` and throws a synchronous {@link TypeError} (no network call)
+ * when it is empty — mirrors the Go SDK's `errEmptyOtpID` fail-fast check.
+ */
+function requireOtpId(otpId: string): string {
+  const id = otpId.trim();
+  if (id === '') {
+    throw new TypeError('otp-id: otp_id is empty');
+  }
+  return id;
 }
 
 /** Narrows `value` to a well-formed V3 envelope shape. */
@@ -152,5 +189,73 @@ export class OtpIdClient {
     }
 
     return parsed.data;
+  }
+
+  /**
+   * Creates an OTP transaction with a server-generated code
+   * (`POST /v3/request`). The code itself is never returned.
+   */
+  requestOtp(params: OrderParams): Promise<OrderResult> {
+    const body = stripUndefined(params as unknown as Record<string, unknown>);
+    return this.doRequest('POST', '/v3/request', body) as Promise<OrderResult>;
+  }
+
+  /**
+   * Delivers a client-generated code (`POST /v3/send`). The server rejects
+   * the `voice` and `whatsapp_inbound` channels for this endpoint; use
+   * `whatsapp`, `sms`, or `email`.
+   */
+  sendOtp(otp: string, params: OrderParams): Promise<OrderResult> {
+    const body = stripUndefined({
+      ...(params as unknown as Record<string, unknown>),
+      otp,
+    });
+    return this.doRequest('POST', '/v3/send', body) as Promise<OrderResult>;
+  }
+
+  /**
+   * Checks a user-submitted code against a transaction (`POST /v3/verify`).
+   * Do not call it for `whatsapp_inbound` transactions. Throws a
+   * synchronous {@link TypeError} (no network call) when `otpId` is empty
+   * (after trimming).
+   */
+  verifyOtp(otpId: string, otp: string): Promise<VerifyResult> {
+    const id = requireOtpId(otpId);
+    return this.doRequest('POST', '/v3/verify', { otp_id: id, otp }) as Promise<VerifyResult>;
+  }
+
+  /**
+   * Fetches the current state of a transaction
+   * (`GET /v3/otp/{otp_id}`, path-escaped). Throws a synchronous
+   * {@link TypeError} (no network call) when `otpId` is empty (after
+   * trimming).
+   */
+  otpStatus(otpId: string): Promise<StatusResult> {
+    const id = requireOtpId(otpId);
+    return this.doRequest(
+      'GET',
+      `/v3/otp/${encodeURIComponent(id)}`,
+    ) as Promise<StatusResult>;
+  }
+
+  /**
+   * Fetches the merchant profile and credit balance for the API key in use
+   * (`GET /v3/account`). Never contains credentials.
+   */
+  account(): Promise<AccountResult> {
+    return this.doRequest('GET', '/v3/account') as Promise<AccountResult>;
+  }
+
+  /**
+   * Creates a credit top-up invoice (`POST /v3/topups`). Call it from
+   * server-side code only — never expose your API key to browsers or
+   * mobile apps.
+   */
+  createTopup(params: CreateTopupParams): Promise<TopupResult> {
+    const body = {
+      amount: params.amount,
+      payment_method_id: params.payment_method_id,
+    };
+    return this.doRequest('POST', '/v3/topups', body) as Promise<TopupResult>;
   }
 }

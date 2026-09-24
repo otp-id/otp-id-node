@@ -24,11 +24,13 @@ export {
 } from './webhook.js';
 export type { ParseVerifiedEventOptions } from './webhook.js';
 
-export { Channels } from './types.js';
+export { Channels, FailureCodes } from './types.js';
 export type {
   AccountResult,
   Channel,
   CreateTopupParams,
+  DeliveryFailure,
+  FailureCode,
   OrderParams,
   OrderResult,
   StatusResult,

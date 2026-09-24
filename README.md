@@ -82,6 +82,24 @@ with `verified: false`, and the SDK resolves with
 already-used transactions do throw an `APIError`
 (`OTP_EXPIRED`, `TOO_MANY_ATTEMPTS`, `ALREADY_USED`).
 
+### Delivery failures
+
+A failed delivery is also **not** an error: `requestOtp`, `sendOtp`, and
+`otpStatus` all resolve normally with `status: 'failed'` and a `failure`
+block describing why — the raw vendor/provider error is never exposed.
+
+```ts
+const res = await client.requestOtp({ channel: 'whatsapp', destination });
+if (res.status === 'failed') {
+  console.log(res.failure?.code, res.failure?.message);
+  // e.g. NUMBER_NOT_ON_WHATSAPP "Nomor tujuan tidak terdaftar di WhatsApp"
+}
+```
+
+`failure.code` (see `FailureCodes`) is typed as a union of the known codes
+plus an open string, so a new code the server introduces later still
+type-checks.
+
 ## Channels
 
 | Constant | Value | Notes |
@@ -115,6 +133,10 @@ detect completion via the `otp.verified` webhook or by polling `otpStatus`.
 const res = await client.requestOtp({ channel: 'whatsapp_inbound' });
 console.log('Ask the user to tap:', res.verification?.wa_link);
 ```
+
+While the transaction is still `pending` and not expired, `otpStatus` returns
+the same `verification` block, so a client that polls or reloads the page
+does not lose the WhatsApp link.
 
 ### Missed Call
 
@@ -205,8 +227,9 @@ them idempotently) — retrying without one may deliver a second OTP.
 ## TypeScript-first
 
 Every wire type — `OrderParams`, `OrderResult`, `VerifyResult`,
-`StatusResult`, `AccountResult`, `TopupResult`, `VerifiedEvent`, and more —
-is exported from `@otp-id/sdk`. Field names stay `snake_case`, matching the
+`StatusResult`, `AccountResult`, `TopupResult`, `VerifiedEvent`,
+`DeliveryFailure`, `FailureCode`, and more — is exported from `@otp-id/sdk`.
+Field names stay `snake_case`, matching the
 JSON wire format and the [API docs](https://docs.otp.id) exactly
 (`otp_id`, `external_id`, `last_balance`, ...) — no camelCase remapping layer
 to keep in sync with the server.

@@ -67,6 +67,37 @@ export interface Verification {
   otp_length?: number;
 }
 
+/**
+ * Known public delivery-failure codes (see {@link FailureCode}). Stable
+ * contract — the server may add new codes over time, so match `failure.code`
+ * against these constants rather than assuming this is the full set.
+ */
+export const FailureCodes = {
+  NUMBER_NOT_ON_WHATSAPP: 'NUMBER_NOT_ON_WHATSAPP',
+  TOO_FREQUENT: 'TOO_FREQUENT',
+  CHANNEL_UNAVAILABLE: 'CHANNEL_UNAVAILABLE',
+  PROVIDER_UNAVAILABLE: 'PROVIDER_UNAVAILABLE',
+  DELIVERY_FAILED: 'DELIVERY_FAILED',
+} as const;
+
+/**
+ * A known delivery-failure code (see {@link FailureCodes}), widened with an
+ * open string so a code the server introduces later still type-checks
+ * instead of being rejected by the compiler.
+ */
+export type FailureCode = keyof typeof FailureCodes | (string & {});
+
+/**
+ * Machine-readable reason a transaction failed to deliver. Present only when
+ * `status` is `"failed"` on `OrderResult`/`StatusResult`. `message` is a
+ * ready-to-show Indonesian string; the raw vendor/provider error is never
+ * exposed by the API.
+ */
+export interface DeliveryFailure {
+  code: FailureCode;
+  message: string;
+}
+
 /** Success payload of POST /v3/request and POST /v3/send. */
 export interface OrderResult {
   otp_id: string;
@@ -86,6 +117,8 @@ export interface OrderResult {
    */
   expires_at: string;
   verification?: Verification;
+  /** Present only when `status` is `"failed"`. Absent for every other status. */
+  failure?: DeliveryFailure;
 }
 
 /** Success payload of POST /v3/verify. */
@@ -114,10 +147,15 @@ export interface StatusResult {
   verified_at: string;
   price: number;
   /**
-   * Only present for not-yet-verified misscall transactions (`prefix`
-   * field), so polling clients can build their UI.
+   * Present for not-yet-verified misscall transactions (`prefix` field) and
+   * for pending, not-yet-expired `whatsapp_inbound` transactions
+   * (`wa_number`/`message`/`wa_link`/`expires_at`), so a polling or
+   * reloading client can (re)build its UI without losing the WhatsApp link.
+   * Absent for every other channel/status combination.
    */
   verification?: Verification;
+  /** Present only when `status` is `"failed"`. Absent for every other status. */
+  failure?: DeliveryFailure;
 }
 
 /** Success payload of GET /v3/account. Never contains credentials. */

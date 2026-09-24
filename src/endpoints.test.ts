@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { withServer } from '../test/helpers.js';
 import { OtpIdClient } from './client.js';
 import { APIError, ErrorCodes } from './errors.js';
-import { Channels } from './types.js';
+import { Channels, FailureCodes } from './types.js';
 
 // Fixtures copied verbatim from otp-id-go's order_test.go / verify_test.go /
 // status_test.go / account_test.go / topup_test.go — the Go SDK is the
@@ -16,6 +16,12 @@ const orderInboundFixture =
 
 const orderMisscallFixture =
   '{"success":true,"data":{"otp_id":"OTP20260807ABCD000003","status":"sent","channel":"misscall","number":"6281234567890","price":250,"last_balance":99050,"expires_at":"2026-08-07 10:05:00","verification":{"prefix":"628559263","otp_length":4}},"error":null}';
+
+// Backend PR bukakios21/otp-be#73: `failure: {code, message}` appears on
+// `status: "failed"` transactions for requestOtp/sendOtp/otpStatus, and is
+// absent for every other status (additive, matches the Go SDK fixtures).
+const orderFailedFixture =
+  '{"success":true,"data":{"otp_id":"OTP20260807ABCD000004","status":"failed","channel":"whatsapp","number":"6281234567890","price":350,"last_balance":99650,"expires_at":"2026-08-07 10:05:00","failure":{"code":"NUMBER_NOT_ON_WHATSAPP","message":"Nomor tujuan tidak terdaftar di WhatsApp"}},"error":null}';
 
 function sendJson(res: ServerResponse, status: number, body: string): void {
   res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -59,6 +65,7 @@ describe('requestOtp', () => {
         expect(res.price).toBe(350);
         expect(res.last_balance).toBe(99650);
         expect(res.verification).toBeUndefined();
+        expect(res.failure).toBeUndefined();
       },
     );
     expect(gotPath).toBe('/v3/request');
@@ -120,6 +127,26 @@ describe('requestOtp', () => {
         });
         expect(res.verification?.prefix).toBe('628559263');
         expect(res.verification?.otp_length).toBe(4);
+      },
+    );
+  });
+
+  it('decodes the failure reason for a failed transaction', async () => {
+    await withServer(
+      (req, res) => sendJson(res, 200, orderFailedFixture),
+      async (baseURL) => {
+        const client = new OtpIdClient('test-key', { baseURL });
+        const res = await client.requestOtp({
+          channel: Channels.WhatsApp,
+          destination: '6281234567890',
+        });
+        expect(res.status).toBe('failed');
+        expect(res.failure).toEqual({
+          code: FailureCodes.NUMBER_NOT_ON_WHATSAPP,
+          message: 'Nomor tujuan tidak terdaftar di WhatsApp',
+        });
+        // A failed delivery is not an error — it resolves, it does not throw.
+        expect(res.last_balance).toBe(99650);
       },
     );
   });
@@ -268,6 +295,7 @@ describe('otpStatus', () => {
         expect(res.verified_at).toBe('');
         expect(res.price).toBe(350);
         expect(res.verification).toBeUndefined();
+        expect(res.failure).toBeUndefined();
       },
     );
     expect(gotMethod).toBe('GET');
@@ -286,6 +314,52 @@ describe('otpStatus', () => {
         const client = new OtpIdClient('test-key', { baseURL });
         const res = await client.otpStatus('OTP20260807ABCD000003');
         expect(res.verification?.prefix).toBe('628559263');
+      },
+    );
+  });
+
+  // Backend PR bukakios21/otp-be#73: GET /v3/otp/{otp_id} now also carries
+  // `failure` for a failed transaction, same shape as requestOtp/sendOtp.
+  it('decodes the failure reason for a failed transaction', async () => {
+    await withServer(
+      (req, res) =>
+        sendJson(
+          res,
+          200,
+          '{"success":true,"data":{"otp_id":"OTP20260807ABCD000001","status":"failed","channel":"whatsapp","number":"6281234567890","attempts":1,"expires_at":"2026-08-07 10:05:00","verified_at":"","price":350,"failure":{"code":"PROVIDER_UNAVAILABLE","message":"Operator pengiriman sedang gangguan, silakan coba lagi"}},"error":null}',
+        ),
+      async (baseURL) => {
+        const client = new OtpIdClient('test-key', { baseURL });
+        const res = await client.otpStatus('OTP20260807ABCD000001');
+        expect(res.status).toBe('failed');
+        expect(res.failure).toEqual({
+          code: FailureCodes.PROVIDER_UNAVAILABLE,
+          message: 'Operator pengiriman sedang gangguan, silakan coba lagi',
+        });
+      },
+    );
+  });
+
+  // Backend PR bukakios21/otp-be#73: a pending, not-yet-expired
+  // whatsapp_inbound transaction now carries the same `verification` block
+  // on GET as on the original order response, so a polling/reloading client
+  // does not lose the wa_link.
+  it('decodes the inbound verification block for a pending whatsapp_inbound transaction', async () => {
+    await withServer(
+      (req, res) =>
+        sendJson(
+          res,
+          200,
+          '{"success":true,"data":{"otp_id":"OTP20260807ABCD000002","status":"pending","channel":"whatsapp_inbound","number":"","attempts":0,"expires_at":"2026-08-07 10:05:00","verified_at":"","price":350,"verification":{"wa_number":"6285212345678","message":"OTPID V-8FK2QN9P — verifikasi MyApp. Kirim pesan ini tanpa mengubah isinya.","wa_link":"https://wa.me/6285212345678?text=OTPID%20V-8FK2QN9P","expires_at":"2026-08-07 10:05:00"}},"error":null}',
+        ),
+      async (baseURL) => {
+        const client = new OtpIdClient('test-key', { baseURL });
+        const res = await client.otpStatus('OTP20260807ABCD000002');
+        expect(res.verification?.wa_number).toBe('6285212345678');
+        expect(res.verification?.wa_link).toContain('https://wa.me/6285212345678');
+        expect(res.verification?.message).not.toBe('');
+        expect(res.verification?.expires_at).toBe('2026-08-07 10:05:00');
+        expect(res.failure).toBeUndefined();
       },
     );
   });

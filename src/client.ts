@@ -10,7 +10,7 @@ import type {
 } from './types.js';
 
 /** SDK version, sent in the `User-Agent` header. */
-export const VERSION = '0.1.0';
+export const VERSION = '0.2.0';
 
 const DEFAULT_BASE_URL = 'https://api.otp.id';
 const DEFAULT_TIMEOUT_MS = 30_000;

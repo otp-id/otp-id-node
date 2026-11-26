@@ -1,6 +1,6 @@
 {
   "name": "@otp-id/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Official OTP.ID SDK for Node.js/TypeScript — multi-channel OTP delivery (WhatsApp, SMS, Email, Missed Call, Voice) with prepaid billing.",
   "publishConfig": {
     "access": "public"

@@ -101,14 +101,26 @@ export interface DeliveryFailure {
 /** Success payload of POST /v3/request and POST /v3/send. */
 export interface OrderResult {
   otp_id: string;
-  /** `pending` | `sent` | `success` | `failed` */
+  /**
+   * `sent` | `success` | `failed` | `pending` | `waiting`. `whatsapp_inbound`
+   * always starts as `waiting` (not charged until verified); `pending` may
+   * appear for some vendor deliveries. An idempotency replay reflects the
+   * current state, so it may also be `verified` or (`whatsapp_inbound` only)
+   * `expired`.
+   */
   status: string;
   channel: Channel;
   number: string;
+  /**
+   * Credit cost of this transaction. For `whatsapp_inbound` it is the amount
+   * charged only if the transaction is verified — nothing is deducted at
+   * request time.
+   */
   price: number;
   /**
    * Remaining credit after this transaction. Stays unchanged when delivery
-   * failed (`status: "failed"`) or on an idempotency replay.
+   * failed (`status: "failed"`), on an idempotency replay, and for
+   * `whatsapp_inbound` (charged only when verified).
    */
   last_balance: number;
   /**
@@ -137,7 +149,12 @@ export interface VerifyResult {
 /** Success payload of GET /v3/otp/{otp_id}. */
 export interface StatusResult {
   otp_id: string;
-  /** `sent` | `success` | `failed` | `pending` | `verified` */
+  /**
+   * `sent` | `success` | `failed` | `pending` | `waiting` | `verified` |
+   * `expired`. `waiting` (initial) and `expired` (`expires_at` passed without
+   * verification; terminal, not charged) apply to `whatsapp_inbound` only;
+   * `whatsapp_inbound` is charged only once `verified`.
+   */
   status: string;
   channel: Channel;
   number: string;
@@ -148,7 +165,7 @@ export interface StatusResult {
   price: number;
   /**
    * Present for not-yet-verified misscall transactions (`prefix` field) and
-   * for pending, not-yet-expired `whatsapp_inbound` transactions
+   * for waiting, not-yet-expired `whatsapp_inbound` transactions
    * (`wa_number`/`message`/`wa_link`/`expires_at`), so a polling or
    * reloading client can (re)build its UI without losing the WhatsApp link.
    * Absent for every other channel/status combination.

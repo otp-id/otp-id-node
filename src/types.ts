@@ -102,8 +102,8 @@ export interface DeliveryFailure {
 export interface OrderResult {
   otp_id: string;
   /**
-   * `sent` | `success` | `failed` | `pending` | `waiting`. `whatsapp_inbound`
-   * always starts as `waiting` (not charged until verified); `pending` may
+   * `sent` | `success` | `failed` | `pending`. `whatsapp_inbound`
+   * always starts as `pending` (not charged until verified); `pending` may
    * appear for some vendor deliveries. An idempotency replay reflects the
    * current state, so it may also be `verified` or (`whatsapp_inbound` only)
    * `expired`.
@@ -150,9 +150,9 @@ export interface VerifyResult {
 export interface StatusResult {
   otp_id: string;
   /**
-   * `sent` | `success` | `failed` | `pending` | `waiting` | `verified` |
-   * `expired`. `waiting` (initial) and `expired` (`expires_at` passed without
-   * verification; terminal, not charged) apply to `whatsapp_inbound` only;
+   * `sent` | `success` | `failed` | `pending` | `verified` |
+   * `expired`. `expired` (`expires_at` passed without
+   * verification; terminal, not charged) applies to `whatsapp_inbound` only;
    * `whatsapp_inbound` is charged only once `verified`.
    */
   status: string;
@@ -165,7 +165,7 @@ export interface StatusResult {
   price: number;
   /**
    * Present for not-yet-verified misscall transactions (`prefix` field) and
-   * for waiting, not-yet-expired `whatsapp_inbound` transactions
+   * for pending, not-yet-expired `whatsapp_inbound` transactions
    * (`wa_number`/`message`/`wa_link`/`expires_at`), so a polling or
    * reloading client can (re)build its UI without losing the WhatsApp link.
    * Absent for every other channel/status combination.

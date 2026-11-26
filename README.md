@@ -19,6 +19,9 @@ npm install @otp-id/sdk
 
 Requires Node.js >= 20 (uses the built-in `fetch` and `AbortSignal.timeout`).
 
+Upgrading from 0.1.x? See [UPGRADING.md](https://github.com/otp-id/otp-id-node/blob/main/UPGRADING.md) (no breaking changes in
+0.2.0) and the [CHANGELOG](CHANGELOG.md).
+
 ## Quickstart
 
 ```ts

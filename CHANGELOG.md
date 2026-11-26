@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-26
+
+See [UPGRADING.md](https://github.com/otp-id/otp-id-node/blob/main/UPGRADING.md) for migration notes. All changes are
+additive — existing fields and behavior are unchanged.
+
 ### Added
 
 - `failure?: DeliveryFailure` on `OrderResult` and `StatusResult`, present
@@ -17,16 +22,17 @@ All notable changes to this project are documented in this file.
   (`wa_number`/`message`/`wa_link`/`expires_at`) for pending, not-yet-expired
   `whatsapp_inbound` transactions, matching the shape already returned by
   `requestOtp`/`sendOtp`.
-- Matches backend PR bukakios21/otp-be#73. Both changes are additive —
-  existing fields and behavior are unchanged.
 
 ### Changed
 
-- Documented status values: `whatsapp_inbound` now starts as `pending`
-  (was `pending`) and can end as `expired` (not charged); it is charged only
-  when `verified`, so `OrderResult.price` is the amount due on verification
-  and `last_balance` is unchanged at request time. Doc-only; `status` stays
-  a plain `string`.
+- Documented the new `whatsapp_inbound` billing model (server-side change):
+  transactions are now charged only when they become `verified`. They stay
+  `pending` while waiting for the user's WhatsApp message and can end as
+  `expired` (`expires_at` passed without a match; not charged).
+  `OrderResult.price` is the amount charged on verification, and
+  `last_balance` is unchanged at request time. A message from a different
+  number than the bound `destination` is rejected and the transaction stays
+  `pending`. Doc-only in the SDK; `status` stays a plain `string`.
 
 ## [0.1.0] - 2026-08-14
 
